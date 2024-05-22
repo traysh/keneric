@@ -10,7 +10,21 @@ height="$5"
 # thumbnail options by mime type
 case "$mime" in
 
+      application/x-openscad)
+      openscad --viewall --imgsize=$width,$height -o $exportPicture.png "$fullname"
+      mv $exportPicture.png $exportPicture
+      exit
+      ;;
+
       model/stl)
+      echo  "import (\"$fullname\");" > $exportPicture.scad
+      openscad --viewall --imgsize=$width,$height -o $exportPicture.png $exportPicture.scad
+      mv $exportPicture.png $exportPicture
+      rm $exportPicture.scad
+      exit
+      ;;
+
+      model/stl-binary)
       echo  "import (\"$fullname\");" > $exportPicture.scad
       openscad --viewall --imgsize=$width,$height -o $exportPicture.png $exportPicture.scad
       mv $exportPicture.png $exportPicture

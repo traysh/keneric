@@ -1,0 +1,17 @@
+{
+    "CacheThumbnail": true,
+    "HandleSequences": false,
+    "IgnoreMaximumSize": false,
+    "KPlugin": {
+        "MimeTypes": [
+            "application/x-krita",
+            "image/openraster",
+            "application/x-blender",
+            "application/x-openscad",
+            "model/stl",
+            "model/stl-binary"
+        ],
+        "Name": "3D Models (keneric)"
+    }
+}
+

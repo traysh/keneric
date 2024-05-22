@@ -16,73 +16,75 @@
 
 #include "keneric.h"
 
+#include <KPluginFactory>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QImage>
-#include <QProcess>
-#include <QMimeType>
 #include <QMimeDatabase>
+#include <QMimeType>
+#include <QProcess>
 #include <QStandardPaths>
-#include <QCryptographicHash>
-//#include <iostream>
 
-extern "C"
-{
-    Q_DECL_EXPORT ThumbCreator *new_creator()
-    {
-        return new Keneric();
-    }
+Keneric::Keneric(QObject *parent, const QVariantList &args)
+    : KIO::ThumbnailCreator(parent, args) {}
+
+Keneric::~Keneric() {}
+
+// bool Keneric::create(const QString &path, int width, int height, QImage &img)
+// {
+KIO::ThumbnailResult Keneric::create(const KIO::ThumbnailRequest &request) {
+  const auto width = request.targetSize().width();
+  const auto height = request.targetSize().height();
+  const auto path = request.url().path();
+  QImage img;
+
+  // std::cout << "Create Width: " << width << std::endl;
+  // std::cout << "Create Height: " << width << std::endl;
+
+  QMimeDatabase db;
+  QMimeType mime = db.mimeTypeForFile(path);
+
+  QString kenericDirectory(
+      (QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) +
+       QStringLiteral("/keneric/")));
+  QString md5Hash = QString::fromUtf8(
+      QCryptographicHash::hash((path.toUtf8()), QCryptographicHash::Md5)
+          .toHex());
+  QString protoThumbnail(kenericDirectory + md5Hash);
+
+  QDir directory(kenericDirectory);
+  if (!directory.exists()) {
+    directory.mkpath(QStringLiteral("."));
+  }
+
+  QObject *parent = nullptr;
+  QString program = QStringLiteral("kenericProcess");
+  QStringList arguments;
+  arguments << path << mime.name() << protoThumbnail
+            << QStringLiteral("%1").arg(width)
+            << QStringLiteral("%1").arg(height);
+
+  QProcess *startAction = new QProcess(parent);
+  startAction->start(program, arguments);
+  startAction->waitForFinished();
+
+  QFile thumbnailFile(protoThumbnail);
+  if (thumbnailFile.exists()) {
+    QImage previewImage(protoThumbnail);
+    previewImage = previewImage.scaled(width, height, Qt::KeepAspectRatio,
+                                       Qt::SmoothTransformation);
+    img.swap(previewImage);
+    QFile::remove(protoThumbnail);
+  }
+
+  if (img.isNull()) {
+    return KIO::ThumbnailResult::fail();
+  }
+  return KIO::ThumbnailResult::pass(img);
 }
 
-Keneric::Keneric()
-{
-    //std::cout << "Keneric CTOR" << std::endl;
-}
+K_PLUGIN_CLASS_WITH_JSON(Keneric, "keneric.json")
 
-Keneric::~Keneric()
-{
-    //std::cout << "Keneric DTOR" << std::endl;
-}
-
-bool Keneric::create(const QString& path, int width, int height, QImage& img)
-{
-    
-    //std::cout << "Create Width: " << width << std::endl;
-    //std::cout << "Create Height: " << width << std::endl;
-    
-    QMimeDatabase db;
-    QMimeType mime = db.mimeTypeForFile(path);
-
-    QString kenericDirectory((QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + "/keneric/"));
-    QString md5Hash = QString(QCryptographicHash::hash((path.toUtf8()),QCryptographicHash::Md5).toHex());
-    QString protoThumbnail(kenericDirectory + md5Hash);
-    
-    QDir directory(kenericDirectory);
-    if (!directory.exists()) {
-        directory.mkpath(".");
-    }
-
-    QObject *parent = 0;
-    QString program="kenericProcess";
-    QStringList arguments;
-    arguments << path << mime.name() << protoThumbnail << QString("%1").arg(width) << QString("%1").arg(height);
-    
-    QProcess *startAction = new QProcess(parent);
-    startAction->start(program, arguments);
-    startAction->waitForFinished();
-    
-    QFile thumbnailFile(protoThumbnail);
-    if (thumbnailFile.exists()){
-        QImage previewImage(protoThumbnail);
-        previewImage = previewImage.scaled(width, height, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        img.swap(previewImage);
-        QFile::remove(protoThumbnail);
-    }
-    
-    return !img.isNull();
-}
-
-ThumbCreator::Flags Keneric::flags() const
-{    
-    return (Flags)(None);
-}
+#include "keneric.moc"
+#include "moc_keneric.cpp"

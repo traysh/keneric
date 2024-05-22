@@ -1,2 +1,2 @@
 # keneric
-keneric KDE5 plasma thumbnailer
+keneric KDE6 plasma thumbnailer
